@@ -207,59 +207,6 @@ class LatitudeClient:
         
         return normalized
     
-    def list_documents(
-        self, 
-        project_id: str, 
-        version_uuid: str
-    ) -> Dict[str, Any]:
-        """
-        List all documents in a project version using SDK
-        
-        Args:
-            project_id: Latitude project ID
-            version_uuid: Version UUID
-            
-        Returns:
-            dict: List of documents from Latitude SDK
-            
-        Raises:
-            LatitudeAPIError: If the request fails
-        """
-        try:
-            # Update SDK project/version context
-            if (self.current_project_id != project_id or 
-                self.current_version_uuid != version_uuid):
-                self.sdk = Latitude(
-                    self.api_key,
-                    LatitudeOptions(
-                        project_id=int(project_id),
-                        version_uuid=version_uuid
-                    )
-                )
-                self.current_project_id = project_id
-                self.current_version_uuid = version_uuid
-            
-            # SDK might not have a direct list method, so we'll implement it
-            # based on available SDK functionality
-            result = asyncio.run(self._async_list_documents())
-            return result
-            
-        except Exception as e:
-            error_str = str(e).lower()
-            if "authentication" in error_str or "unauthorized" in error_str:
-                raise LatitudeAuthenticationError(f"Invalid Latitude API key: {e}")
-            elif "not found" in error_str or "404" in error_str:
-                raise LatitudeNotFoundError(f"Version not found: {version_uuid}")
-            elif "no address associated with hostname" in error_str or "could not resolve host" in error_str:
-                raise LatitudeAPIError(f"Failed to connect to Latitude API: {e}")
-            else:
-                raise LatitudeAPIError(f"Error listing documents from Latitude SDK: {e}")
-    
-    async def _async_list_documents(self) -> Dict[str, Any]:
-        """Async method to list documents using SDK"""
-        # This would need to be implemented based on actual SDK capabilities
-        # For now, return empty list as SDK might not support listing
-        return {"documents": []}
 
 
 def parse_template_path(template_path: str) -> Tuple[Optional[str], Optional[str], str]:

@@ -117,14 +117,7 @@ llm -t lat:99999/dc951f3b-a3d9-4ede-bff1-821e7b10c5e8/pcaro-random-number -m gpt
 # Use live version (recommended for latest): project-id/live/document-path
 llm -t lat:99999/live/pcaro-random-number -m gpt-4 "Sumale 3"
 
-# Version and document (tries without project ID):
-llm -t lat:dc951f3b-a3d9-4ede-bff1-821e7b10c5e8/pcaro-random-number -m gpt-4 "input"
 
-# List documents in specific version:
-llm -t lat:99999/dc951f3b-a3d9-4ede-bff1-821e7b10c5e8 -m gpt-4 "input"
-
-# List documents in live version:
-llm -t lat:99999/live -m gpt-4 "input"
 ```
 
 **💡 How to find the required values**:

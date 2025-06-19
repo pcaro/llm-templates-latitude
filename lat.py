@@ -87,52 +87,6 @@ class LatitudeClient:
         except Exception as e:
             raise LatitudeAPIError(f"Error loading document from Latitude: {e}")
     
-    def list_documents(
-        self, 
-        project_id: str, 
-        version_uuid: str
-    ) -> Dict[str, Any]:
-        """
-        List all documents in a project version
-        
-        Args:
-            project_id: Latitude project ID
-            version_uuid: Version UUID
-            
-        Returns:
-            dict: List of documents from Latitude API
-            
-        Raises:
-            LatitudeAPIError: If the request fails
-        """
-        url = f"{self.base_url}/projects/{project_id}/versions/{version_uuid}/documents"
-        
-        headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json",
-        }
-        
-        try:
-            with httpx.Client(timeout=30.0) as client:
-                response = client.get(url, headers=headers)
-                
-                if response.status_code == 401:
-                    raise LatitudeAuthenticationError("Invalid Latitude API key")
-                elif response.status_code == 404:
-                    raise LatitudeNotFoundError(f"Version not found: {version_uuid}")
-                
-                response.raise_for_status()
-                return response.json()
-                
-        except (LatitudeAuthenticationError, LatitudeNotFoundError):
-            # Re-raise these as-is
-            raise
-        except httpx.HTTPStatusError as e:
-            raise LatitudeAPIError(f"Latitude API error: {e.response.status_code}")
-        except httpx.RequestError as e:
-            raise LatitudeAPIError(f"Failed to connect to Latitude API: {e}")
-        except Exception as e:
-            raise LatitudeAPIError(f"Error loading documents from Latitude: {e}")
 
 
 def parse_template_path(template_path: str) -> Tuple[Optional[str], Optional[str], str]:
