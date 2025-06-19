@@ -25,10 +25,9 @@ def latitude_template_loader(template_path: str) -> llm.Template:
 
     Args:
         template_path: Can be one of:
-            - 'project_id/prompt_path' - Path within specific project
-            - 'prompt_path' - Path in default project
-            - 'uuid' - Prompt version UUID (recommended for reliability)
-            - 'project_id/uuid' - UUID within specific project
+            - 'project_id/version_uuid/document_path' - Full path with project, version, and document
+            - 'version_uuid/document_path' - Version and document (project determined automatically)
+            - 'project_id/version_uuid' - Project and version (lists all documents)
 
     Returns:
         llm.Template: Template object with prompt content from Latitude
@@ -40,10 +39,10 @@ def latitude_template_loader(template_path: str) -> llm.Template:
     api_key = _get_api_key()
 
     # Parse template path
-    project_id, prompt_path_or_uuid, is_uuid = _parse_template_path(template_path)
+    project_id, version_uuid, document_path = _parse_template_path(template_path)
 
     # Load template from Latitude
-    template_data = _fetch_latitude_template(api_key, project_id, prompt_path_or_uuid, is_uuid)
+    template_data = _fetch_latitude_template(api_key, project_id, version_uuid, document_path)
 
     # Create LLM template
     return _create_llm_template(template_path, template_data)
@@ -70,33 +69,56 @@ def _get_api_key() -> str:
     )
 
 
-def _parse_template_path(template_path: str) -> tuple[Optional[str], str, bool]:
+def _parse_template_path(template_path: str) -> tuple[Optional[str], Optional[str], str]:
     """
-    Parse template path into project_id, prompt_path/uuid, and is_uuid flag
+    Parse template path into project_id, version_uuid, and document_path
 
     Args:
-        template_path: Can be:
-            - 'project_id/prompt_path' 
-            - 'prompt_path'
-            - 'uuid' (prompt version UUID)
-            - 'project_id/uuid'
+        template_path: Must be one of:
+            - 'project_id/version_uuid/document_path' - Full specification (recommended)
+            - 'version_uuid/document_path' - Will try without project ID
+            - 'project_id/version_uuid' - List all documents in version
 
     Returns:
-        tuple: (project_id, prompt_path_or_uuid, is_uuid)
+        tuple: (project_id, version_uuid, document_path)
     """
-    parts = template_path.split("/", 1)
+    parts = template_path.split("/")
 
     if len(parts) == 1:
-        # Just prompt path or UUID
-        path_or_uuid = parts[0]
-        # Check if it looks like a UUID (basic check)
-        is_uuid = _is_uuid_like(path_or_uuid)
-        return None, path_or_uuid, is_uuid
+        # Just version UUID - list all documents
+        if _is_uuid_like(parts[0]):
+            return None, parts[0], ""
+        else:
+            raise ValueError(
+                "Invalid format. Use: project_id/version_uuid/document_path"
+            )
+    elif len(parts) == 2:
+        # Could be version_uuid/document_path or project_id/version_uuid
+        if _is_uuid_like(parts[0]):
+            # version_uuid/document_path
+            return None, parts[0], parts[1]
+        elif _is_uuid_like(parts[1]):
+            # project_id/version_uuid (list documents)
+            return parts[0], parts[1], ""
+        else:
+            raise ValueError(
+                "Invalid format. Second part must be a version UUID. "
+                "Use: project_id/version_uuid/document_path"
+            )
+    elif len(parts) >= 3:
+        # project_id/version_uuid/document_path
+        project_id, version_uuid = parts[0], parts[1]
+        document_path = "/".join(parts[2:])
+        
+        if not _is_uuid_like(version_uuid):
+            raise ValueError(
+                f"Invalid version UUID: {version_uuid}. "
+                "Use: project_id/version_uuid/document_path"
+            )
+        
+        return project_id, version_uuid, document_path
     else:
-        # project_id/prompt_path or project_id/uuid format
-        project_id, path_or_uuid = parts[0], parts[1]
-        is_uuid = _is_uuid_like(path_or_uuid)
-        return project_id, path_or_uuid, is_uuid
+        raise ValueError("Invalid template path format")
 
 
 def _is_uuid_like(value: str) -> bool:
@@ -117,16 +139,16 @@ def _is_uuid_like(value: str) -> bool:
 
 
 def _fetch_latitude_template(
-    api_key: str, project_id: Optional[str], prompt_path_or_uuid: str, is_uuid: bool = False
+    api_key: str, project_id: Optional[str], version_uuid: Optional[str], document_path: str
 ) -> Dict[str, Any]:
     """
-    Fetch template data from Latitude API
+    Fetch template data from Latitude API v3
 
     Args:
         api_key: Latitude API key
-        project_id: Project ID (optional, uses default if None)
-        prompt_path_or_uuid: Path to the prompt or UUID of prompt version
-        is_uuid: Whether the identifier is a UUID or path
+        project_id: Project ID (optional)
+        version_uuid: Version UUID (required for most operations)
+        document_path: Path to the document/prompt
 
     Returns:
         dict: Template data from Latitude API
@@ -134,21 +156,32 @@ def _fetch_latitude_template(
     Raises:
         ValueError: If the API request fails
     """
-    # Build API URL based on whether we're using UUID or path
-    if is_uuid:
-        # Use UUID endpoint (prompt version)
-        url = f"https://gateway.latitude.so/api/v1/prompt-versions/{prompt_path_or_uuid}"
-    elif project_id:
-        # Use project + path endpoint
-        url = f"https://gateway.latitude.so/api/v1/projects/{project_id}/prompts/{prompt_path_or_uuid}"
-    else:
-        # Use global path endpoint
-        url = f"https://gateway.latitude.so/api/v1/prompts/{prompt_path_or_uuid}"
-
+    # Set up headers for all requests
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
     }
+
+    # Validate required parameters
+    if not version_uuid:
+        raise ValueError("Version UUID is required. Format: lat:version-uuid/document-path")
+
+    # Build API URL using v3 structure
+    if project_id:
+        if document_path:
+            # Get specific document
+            url = f"https://gateway.latitude.so/api/v3/projects/{project_id}/versions/{version_uuid}/documents/{document_path}"
+        else:
+            # List all documents in version
+            url = f"https://gateway.latitude.so/api/v3/projects/{project_id}/versions/{version_uuid}/documents"
+    else:
+        # Try without project ID - might work with some endpoints
+        if document_path:
+            # Try version-only endpoint (might exist)
+            url = f"https://gateway.latitude.so/api/v3/versions/{version_uuid}/documents/{document_path}"
+        else:
+            # Try to list documents in version without project
+            url = f"https://gateway.latitude.so/api/v3/versions/{version_uuid}/documents"
 
     try:
         with httpx.Client(timeout=30.0) as client:
@@ -162,8 +195,10 @@ def _fetch_latitude_template(
         if e.response.status_code == 401:
             raise ValueError("Invalid Latitude API key")
         elif e.response.status_code == 404:
-            identifier_type = "UUID" if is_uuid else "path"
-            raise ValueError(f"Prompt not found ({identifier_type}): {prompt_path_or_uuid}")
+            if document_path:
+                raise ValueError(f"Document not found: {document_path}")
+            else:
+                raise ValueError(f"Version not found: {version_uuid}")
         else:
             raise ValueError(f"Latitude API error: {e.response.status_code}")
     except httpx.RequestError as e:

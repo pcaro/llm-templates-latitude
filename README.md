@@ -61,24 +61,25 @@ llm -t lat:code-reviewer -m llama2 < my-code.py
 
 ### Template Path Formats
 
+**Important**: Latitude API v3 requires specific format with project ID, version UUID, and document path. Traditional path-based access is not supported.
+
 ```bash
-# Full format: project-id/prompt-path
-llm -t lat:proj-123/marketing/emails/welcome
+# Full format (recommended): project-id/version-uuid/document-path
+llm -t lat:19228/dc951f3b-a3d9-4ede-bff1-821e7b10c5e8/pcaro-random-number -m gpt-4 "Sumale 3"
 
-# Nested paths supported
-llm -t lat:my-project/content/blog/technical-writer
+# Version and document (tries without project ID):
+llm -t lat:dc951f3b-a3d9-4ede-bff1-821e7b10c5e8/pcaro-random-number -m gpt-4 "input"
 
-# Just prompt path (uses default project)
-llm -t lat:welcome-email
-
-# UUID format (prompt version UUID - recommended for reliability)
-llm -t lat:550e8400-e29b-41d4-a716-446655440000
-
-# Project with UUID
-llm -t lat:my-project/550e8400-e29b-41d4-a716-446655440000
+# List documents in version:
+llm -t lat:19228/dc951f3b-a3d9-4ede-bff1-821e7b10c5e8 -m gpt-4 "input"
 ```
 
-**💡 Tip**: Using UUIDs is more reliable than paths since they don't change when you rename prompts or move them between projects. You can find the UUID in the Latitude web interface.
+**💡 How to find the required values**:
+- **Project ID**: Numeric ID from Latitude project settings (e.g., `19228`)
+- **Version UUID**: UUID of the prompt version in Latitude (e.g., `dc951f3b-a3d9-4ede-bff1-821e7b10c5e8`)
+- **Document Path**: Exact name of your prompt in Latitude (e.g., `pcaro-random-number`)
+
+**❌ Not supported**: Global paths like `PS - Site Selection/pcaro-random-number` are not available in API v3.
 
 ### With Parameters
 
