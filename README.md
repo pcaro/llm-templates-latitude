@@ -1,5 +1,9 @@
 # llm-templates-latitude
 
+[![CI](https://github.com/pcaro/llm-templates-latitude/workflows/CI/badge.svg)](https://github.com/pcaro/llm-templates-latitude/actions)
+[![PyPI version](https://badge.fury.io/py/llm-templates-latitude.svg)](https://badge.fury.io/py/llm-templates-latitude)
+[![codecov](https://codecov.io/gh/pcaro/llm-templates-latitude/branch/main/graph/badge.svg)](https://codecov.io/gh/pcaro/llm-templates-latitude)
+
 Template loader for [LLM](https://llm.datasette.io/) that loads prompts from [Latitude](https://latitude.so/).
 
 This plugin allows you to use prompts managed in Latitude as templates in LLM, giving you the best of both worlds: centralized prompt management in Latitude and flexible model execution with LLM.
