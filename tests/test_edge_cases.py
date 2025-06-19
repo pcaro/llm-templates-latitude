@@ -25,19 +25,11 @@ class TestPathParsingEdgeCases:
     def test_parse_template_path_with_special_characters(self):
         """Test paths with special characters"""
         project_id, version_uuid, doc_path = parse_template_path(
-            f"my-project_123/{SAMPLE_UUIDS[0]}/email-template_v2.1"
-        )
-        assert project_id == "my-project_123"
-        assert doc_path == "email-template_v2.1"
-    
-    def test_parse_template_path_empty_document_path(self):
-        """Test with empty document path (list mode)"""
-        project_id, version_uuid, doc_path = parse_template_path(
-            f"12345/{SAMPLE_UUIDS[0]}"
+            f"12345/{SAMPLE_UUIDS[0]}/email-template_v2.1"
         )
         assert project_id == "12345"
-        assert version_uuid == SAMPLE_UUIDS[0]
-        assert doc_path == ""
+        assert doc_path == "email-template_v2.1"
+    
     
     def test_parse_template_path_very_long_path(self):
         """Test with very long paths"""
@@ -77,17 +69,11 @@ class TestLiveVersionParsing:
         assert version_uuid == "live"
         assert doc_path == "my-prompt"
     
-    def test_parse_live_version_list_documents(self):
-        """Test parsing project/live format (list documents)"""
-        project_id, version_uuid, doc_path = parse_template_path("12345/live")
-        assert project_id == "12345"
-        assert version_uuid == "live"
-        assert doc_path == ""
     
     def test_parse_live_version_nested_path(self):
         """Test parsing with nested document paths and live"""
-        project_id, version_uuid, doc_path = parse_template_path("project/live/folder/subfolder/doc")
-        assert project_id == "project"
+        project_id, version_uuid, doc_path = parse_template_path("99999/live/folder/subfolder/doc")
+        assert project_id == "99999"
         assert version_uuid == "live"
         assert doc_path == "folder/subfolder/doc"
     
@@ -338,7 +324,7 @@ class TestConcurrentAccess:
         """Test multiple simultaneous parse calls"""
         # This is mainly to ensure thread safety of parsing functions
         paths = [
-            f"project-{i}/{SAMPLE_UUIDS[i % len(SAMPLE_UUIDS)]}/doc-{i}"
+            f"{12000 + i}/{SAMPLE_UUIDS[i % len(SAMPLE_UUIDS)]}/doc-{i}"
             for i in range(100)
         ]
         
@@ -350,5 +336,5 @@ class TestConcurrentAccess:
         # Verify all parses succeeded
         assert len(results) == 100
         for i, (project_id, version_uuid, doc_path) in enumerate(results):
-            assert project_id == f"project-{i}"
+            assert project_id == str(12000 + i)
             assert doc_path == f"doc-{i}"

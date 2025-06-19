@@ -55,11 +55,11 @@ Choose your implementation using the template prefix:
 
 ```bash
 # HTTP Client (default) - both of these are equivalent
-llm -t lat:19228/live/welcome-email -m gpt-4 "New user signed up"
-llm -t lat-http:19228/live/welcome-email -m gpt-4 "New user signed up"
+llm -t lat:99999/live/welcome-email -m gpt-4 "New user signed up"
+llm -t lat-http:99999/live/welcome-email -m gpt-4 "New user signed up"
 
 # SDK Client (requires latitude-sdk package)
-llm -t lat-sdk:19228/live/welcome-email -m gpt-4 "New user signed up"
+llm -t lat-sdk:99999/live/welcome-email -m gpt-4 "New user signed up"
 ```
 
 To use the SDK implementation, you need to install the SDK package:
@@ -69,7 +69,7 @@ To use the SDK implementation, you need to install the SDK package:
 pip install latitude-sdk
 
 # Then use the lat-sdk: prefix
-llm -t lat-sdk:19228/live/welcome-email -m gpt-4 "input"
+llm -t lat-sdk:99999/live/welcome-email -m gpt-4 "input"
 ```
 
 To check which implementation a prefix would use:
@@ -97,13 +97,13 @@ Load a Latitude prompt as a template and use it with any LLM model:
 
 ```bash
 # Use a Latitude prompt with GPT-4
-llm -t lat:19228/live/welcome-email -m gpt-4 "New user John just signed up"
+llm -t lat:99999/live/welcome-email -m gpt-4 "New user John just signed up"
 
 # Use with Claude
-llm -t lat:19228/live/blog-writer -m claude-3.5-sonnet -p topic "AI development" "Write an article"
+llm -t lat:99999/live/blog-writer -m claude-3.5-sonnet -p topic "AI development" "Write an article"
 
 # Use with local models
-llm -t lat:19228/live/code-reviewer -m llama2 < my-code.py
+llm -t lat:99999/live/code-reviewer -m llama2 < my-code.py
 ```
 
 ### Template Path Formats
@@ -112,23 +112,23 @@ llm -t lat:19228/live/code-reviewer -m llama2 < my-code.py
 
 ```bash
 # Full format with specific version: project-id/version-uuid/document-path
-llm -t lat:19228/dc951f3b-a3d9-4ede-bff1-821e7b10c5e8/pcaro-random-number -m gpt-4 "Sumale 3"
+llm -t lat:99999/dc951f3b-a3d9-4ede-bff1-821e7b10c5e8/pcaro-random-number -m gpt-4 "Sumale 3"
 
 # Use live version (recommended for latest): project-id/live/document-path
-llm -t lat:19228/live/pcaro-random-number -m gpt-4 "Sumale 3"
+llm -t lat:99999/live/pcaro-random-number -m gpt-4 "Sumale 3"
 
 # Version and document (tries without project ID):
 llm -t lat:dc951f3b-a3d9-4ede-bff1-821e7b10c5e8/pcaro-random-number -m gpt-4 "input"
 
 # List documents in specific version:
-llm -t lat:19228/dc951f3b-a3d9-4ede-bff1-821e7b10c5e8 -m gpt-4 "input"
+llm -t lat:99999/dc951f3b-a3d9-4ede-bff1-821e7b10c5e8 -m gpt-4 "input"
 
 # List documents in live version:
-llm -t lat:19228/live -m gpt-4 "input"
+llm -t lat:99999/live -m gpt-4 "input"
 ```
 
 **💡 How to find the required values**:
-- **Project ID**: Numeric ID from Latitude project settings (e.g., `19228`)
+- **Project ID**: Numeric ID from Latitude project settings (e.g., `99999`)
 - **Version**: Either `live` for the latest version, or the specific UUID (e.g., `dc951f3b-a3d9-4ede-bff1-821e7b10c5e8`)
 - **Document Path**: Exact name of your prompt in Latitude (e.g., `pcaro-random-number`)
 
@@ -142,13 +142,13 @@ If your Latitude prompt has parameters defined (using `{{variable}}` syntax), yo
 
 ```bash
 # Latitude prompt: "Hello {{name}}, your score is {{score}}"
-llm -t lat:19228/live/user-greeting -p name "Alice" -p score 95 -m gpt-4
+llm -t lat:99999/live/user-greeting -p name "Alice" -p score 95 -m gpt-4
 
 # Use with specific version
-llm -t lat:19228/dc951f3b-a3d9-4ede-bff1-821e7b10c5e8/user-greeting -p name "Alice" -p score 95 -m gpt-4
+llm -t lat:99999/dc951f3b-a3d9-4ede-bff1-821e7b10c5e8/user-greeting -p name "Alice" -p score 95 -m gpt-4
 
 # Use with any model
-llm -t lat:19228/live/email-template -p recipient_name "Bob" -p tone "formal" -m claude-3 "Meeting cancelled"
+llm -t lat:99999/live/email-template -p recipient_name "Bob" -p tone "formal" -m claude-3 "Meeting cancelled"
 ```
 
 **Variable Syntax Conversion**: The plugin automatically converts Latitude's `{{variable}}` syntax to LLM's `$variable` syntax, so your existing Latitude prompts work seamlessly with LLM's parameter system.
@@ -159,7 +159,7 @@ You can save Latitude templates locally for faster access:
 
 ```bash
 # Download and save locally
-llm -t lat:19228/live/summarizer --save my-summarizer
+llm -t lat:99999/live/summarizer --save my-summarizer
 
 # Use the saved template
 llm -t my-summarizer -m gpt-4 "Content to summarize"
@@ -171,10 +171,10 @@ Templates work with streaming just like regular LLM usage:
 
 ```bash
 # HTTP Client
-llm -t lat:19228/live/story-writer -m gpt-4 "Once upon a time..." --stream
+llm -t lat:99999/live/story-writer -m gpt-4 "Once upon a time..." --stream
 
 # SDK Client
-llm -t lat-sdk:19228/live/story-writer -m gpt-4 "Once upon a time..." --stream
+llm -t lat-sdk:99999/live/story-writer -m gpt-4 "Once upon a time..." --stream
 ```
 
 ## Template Features
@@ -329,7 +329,7 @@ This will publish to https://test.pypi.org for verification.
 
 ## How It Works
 
-1. **Template Request**: When you use `-t lat:project/prompt`, `-t lat-http:project/prompt`, or `-t lat-sdk:project/prompt`, the plugin calls Latitude's API
+1. **Template Request**: When you use `-t lat:project-id/version/prompt`, `-t lat-http:project-id/version/prompt`, or `-t lat-sdk:project-id/version/prompt`, the plugin calls Latitude's API
 2. **Client Selection**: The plugin automatically selects the HTTP or SDK client based on the prefix you used
 3. **Template Download**: Retrieves the prompt content, system prompt, and configuration from Latitude
 4. **LLM Integration**: Creates an LLM template with the downloaded content and converted variables

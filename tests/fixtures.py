@@ -190,7 +190,7 @@ SAMPLE_UUIDS = [
     "dc951f3b-a3d9-4ede-bff1-821e7b10c5e8"
 ]
 
-SAMPLE_PROJECT_IDS = ["12345", "19228", "test-project"]
+SAMPLE_PROJECT_IDS = ["12345", "99999", "20001"]
 
 SAMPLE_DOCUMENT_PATHS = [
     "simple-prompt",

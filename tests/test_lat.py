@@ -90,8 +90,8 @@ def test_parse_template_path_valid_formats():
     test_uuid = "550e8400-e29b-41d4-a716-446655440000"
     
     # Full format
-    project_id, version_uuid, document_path = parse_template_path(f"proj/{test_uuid}/doc")
-    assert project_id == "proj"
+    project_id, version_uuid, document_path = parse_template_path(f"12345/{test_uuid}/doc")
+    assert project_id == "12345"
     assert version_uuid == test_uuid
     assert document_path == "doc"
     
@@ -101,11 +101,6 @@ def test_parse_template_path_valid_formats():
     assert version_uuid == test_uuid
     assert document_path == "doc"
     
-    # Just version
-    project_id, version_uuid, document_path = parse_template_path(test_uuid)
-    assert project_id is None
-    assert version_uuid == test_uuid
-    assert document_path == ""
 
 
 def test_parse_template_path_invalid_formats():

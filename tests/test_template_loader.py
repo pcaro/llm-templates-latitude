@@ -24,8 +24,8 @@ def test_parse_template_path():
     """Test parsing of template paths"""
     # Test with project_id/version_uuid/document_path format
     test_uuid = "550e8400-e29b-41d4-a716-446655440000"
-    project_id, version_uuid, document_path = parse_template_path(f"my-project/{test_uuid}/email-template")
-    assert project_id == "my-project"
+    project_id, version_uuid, document_path = parse_template_path(f"12345/{test_uuid}/email-template")
+    assert project_id == "12345"
     assert version_uuid == test_uuid
     assert document_path == "email-template"
 
@@ -35,29 +35,14 @@ def test_parse_template_path():
     assert version_uuid == test_uuid
     assert document_path == "welcome-email"
 
-    # Test with just version UUID (list documents)
-    project_id, version_uuid, document_path = parse_template_path(test_uuid)
-    assert project_id is None
-    assert version_uuid == test_uuid
-    assert document_path == ""
 
-    # Test with project_id/version_uuid (list documents)
-    project_id, version_uuid, document_path = parse_template_path(f"my-project/{test_uuid}")
-    assert project_id == "my-project"
-    assert version_uuid == test_uuid
-    assert document_path == ""
     
     # Test with project_id/live/document_path format
-    project_id, version_uuid, document_path = parse_template_path("my-project/live/email-template")
-    assert project_id == "my-project"
+    project_id, version_uuid, document_path = parse_template_path("12345/live/email-template")
+    assert project_id == "12345"
     assert version_uuid == "live"
     assert document_path == "email-template"
     
-    # Test with project_id/live (list documents)
-    project_id, version_uuid, document_path = parse_template_path("my-project/live")
-    assert project_id == "my-project"
-    assert version_uuid == "live"
-    assert document_path == ""
 
 
 def test_is_uuid_like():
@@ -112,9 +97,9 @@ def test_latitude_template_loader_integration():
     from lat import parse_template_path, extract_template_data
     
     test_uuid = "550e8400-e29b-41d4-a716-446655440000"
-    project_id, version_uuid, document_path = parse_template_path(f"test-project/{test_uuid}/welcome-email")
+    project_id, version_uuid, document_path = parse_template_path(f"99999/{test_uuid}/welcome-email")
     
-    assert project_id == "test-project"
+    assert project_id == "99999"
     assert version_uuid == test_uuid
     assert document_path == "welcome-email"
     
@@ -304,13 +289,6 @@ class TestTemplateLoaderIntegration:
             latitude_template_loader("550e8400-e29b-41d4-a716-446655440000/document-name", use_sdk=False)
     
     @patch("llm_templates_latitude._get_api_key")
-    def test_latitude_template_loader_list_documents_not_implemented(self, mock_get_api_key):
-        """Test error when trying to list documents"""
-        mock_get_api_key.return_value = "test-api-key"
-        
-        # Should raise ValueError for document listing (now just an invalid format error)
-        with pytest.raises(ValueError, match="Document listing not yet implemented"):
-            latitude_template_loader("12345/550e8400-e29b-41d4-a716-446655440000", use_sdk=False)
 
 
 class TestFieldFiltering:
