@@ -21,6 +21,7 @@ jobs:
       with:
         enable-cache: true
         cache-dependency-glob: "uv.lock"
+        version: "latest"
     
     - name: Set up Python ${{ matrix.python-version }}
       run: uv python install ${{ matrix.python-version }}
@@ -45,4 +46,9 @@ jobs:
         uv run mypy llm_templates_latitude.py
     
     - name: Test build
-      run: uv build
+      run: |
+        if uv build --help >/dev/null 2>&1; then
+          uv build
+        else
+          uv run python -m build
+        fi

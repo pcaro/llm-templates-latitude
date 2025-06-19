@@ -45,6 +45,7 @@ dev-dependencies = [
     "ruff>=0.1.0",
     "mypy>=1.0",
     "twine>=6.1.0",
+    "build>=1.0.0",
 ]
 
 [tool.black]
