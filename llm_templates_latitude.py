@@ -11,18 +11,69 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
+def lat_loader(template_path: str) -> llm.Template:
+    """
+    Load a template from Latitude platform using HTTP client
+
+    Args:
+        template_path: Format should be 'project_id/version_uuid/document_path'
+                      - project_id: Your Latitude project ID
+                      - version_uuid: Version UUID or 'live' for live version
+                      - document_path: Path to the document in your project
+
+    Returns:
+        llm.Template: Template object with prompt content from Latitude
+
+    Raises:
+        ValueError: If API key is missing or template cannot be loaded
+    """
+    return latitude_template_loader(template_path, use_sdk=False)
+
+
+def lat_http_loader(template_path: str) -> llm.Template:
+    """
+    Load a template from Latitude platform using HTTP client (explicit)
+
+    Args:
+        template_path: Format should be 'project_id/version_uuid/document_path'
+                      - project_id: Your Latitude project ID
+                      - version_uuid: Version UUID or 'live' for live version
+                      - document_path: Path to the document in your project
+
+    Returns:
+        llm.Template: Template object with prompt content from Latitude
+
+    Raises:
+        ValueError: If API key is missing or template cannot be loaded
+    """
+    return latitude_template_loader(template_path, use_sdk=False)
+
+
+def lat_sdk_loader(template_path: str) -> llm.Template:
+    """
+    Load a template from Latitude platform using official SDK
+
+    Args:
+        template_path: Format should be 'project_id/version_uuid/document_path'
+                      - project_id: Your Latitude project ID
+                      - version_uuid: Version UUID or 'live' for live version
+                      - document_path: Path to the document in your project
+
+    Returns:
+        llm.Template: Template object with prompt content from Latitude
+
+    Raises:
+        ValueError: If API key is missing, SDK not available, or template cannot be loaded
+    """
+    return latitude_template_loader(template_path, use_sdk=True)
+
+
 @llm.hookimpl
 def register_template_loaders(register):
     """Register Latitude template loaders with LLM"""
-    register(
-        "lat", lambda path: latitude_template_loader(path, use_sdk=False)
-    )  # Default (HTTP)
-    register(
-        "lat-http", lambda path: latitude_template_loader(path, use_sdk=False)
-    )  # Explicit HTTP
-    register(
-        "lat-sdk", lambda path: latitude_template_loader(path, use_sdk=True)
-    )  # SDK
+    register("lat", lat_loader)
+    register("lat-http", lat_http_loader)
+    register("lat-sdk", lat_sdk_loader)
 
 
 def latitude_template_loader(template_path: str, use_sdk: bool = False) -> llm.Template:
