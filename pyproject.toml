@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "llm-templates-latitude"
-version = "0.2.0"
+version = "0.3.0"
 description = "LLM template loader for Latitude - Load prompts from Latitude as LLM templates"
 readme = "README.md"
 authors = [{name = "Pablo Caro Revuelta", email = "correo@pablocaro.es"}]
