@@ -3,7 +3,6 @@ LLM template loader for Latitude - Load prompts from Latitude as LLM templates
 """
 
 import os
-from typing import Optional
 
 import llm
 from dotenv import load_dotenv
@@ -15,9 +14,15 @@ load_dotenv()
 @llm.hookimpl
 def register_template_loaders(register):
     """Register Latitude template loaders with LLM"""
-    register("lat", lambda path: latitude_template_loader(path, use_sdk=False))  # Default (HTTP)
-    register("lat-http", lambda path: latitude_template_loader(path, use_sdk=False))  # Explicit HTTP
-    register("lat-sdk", lambda path: latitude_template_loader(path, use_sdk=True))  # SDK
+    register(
+        "lat", lambda path: latitude_template_loader(path, use_sdk=False)
+    )  # Default (HTTP)
+    register(
+        "lat-http", lambda path: latitude_template_loader(path, use_sdk=False)
+    )  # Explicit HTTP
+    register(
+        "lat-sdk", lambda path: latitude_template_loader(path, use_sdk=True)
+    )  # SDK
 
 
 def latitude_template_loader(template_path: str, use_sdk: bool = False) -> llm.Template:
@@ -40,46 +45,53 @@ def latitude_template_loader(template_path: str, use_sdk: bool = False) -> llm.T
     try:
         # Get API key from environment or LLM keys
         api_key = _get_api_key()
-        
-        # Import the appropriate client
-        if use_sdk:
-            try:
-                from lat_sdk import (
-                    LatitudeAPIError,
-                    LatitudeAuthenticationError, 
-                    LatitudeClient,
-                    LatitudeNotFoundError,
-                    extract_template_data,
-                    parse_template_path,
-                )
-                # For SDK, we can pass project_id during initialization if available
-                project_id_hint, _, _ = parse_template_path(template_path)
-                client = LatitudeClient(api_key, project_id_hint)
-            except ImportError:
-                raise ValueError("SDK not available. Install with: pip install latitude-sdk")
-        else:
-            from lat import (
-                LatitudeAPIError,
-                LatitudeAuthenticationError, 
-                LatitudeClient,
-                LatitudeNotFoundError,
-                extract_template_data,
-                parse_template_path,
-            )
-            client = LatitudeClient(api_key)
 
-        # Parse template path
+        # Import utilities first
+        from utils import (
+            extract_template_data,
+            parse_template_path,
+        )
+
+        # Parse template path first
         project_id, version_uuid, document_path = parse_template_path(template_path)
 
-        # Load template from Latitude
-        if document_path:
-            # Get specific document
-            if not project_id:
-                raise ValueError("Project ID is required for document access. Use: project_id/version_uuid/document_path")
-            latitude_data = client.get_document(project_id, version_uuid, document_path)
+        # Validate document path
+        if not document_path:
+            raise ValueError(
+                "Document listing not yet implemented. Specify document path."
+            )
+
+        # Validate project_id is required for document access
+        if not project_id:
+            raise ValueError(
+                "Project ID is required for document access. Use: project_id/version_uuid/document_path"
+            )
+
+        # Ensure version_uuid is not None for mypy
+        if version_uuid is None:
+            raise ValueError("Version UUID cannot be None")
+
+        # Load template from appropriate client
+        if use_sdk:
+            try:
+                from lat_sdk import LatitudeClient as SDKLatitudeClient
+
+                # For SDK, we can pass project_id during initialization if available
+                sdk_client = SDKLatitudeClient(api_key, project_id)
+                latitude_data = sdk_client.get_document(
+                    project_id, version_uuid, document_path
+                )
+            except ImportError:
+                raise ValueError(
+                    "SDK not available. Install with: pip install latitude-sdk"
+                )
         else:
-            # List documents (not implemented yet - would need different handling)
-            raise ValueError("Document listing not yet implemented. Specify document path.")
+            from lat import LatitudeClient as HTTPLatitudeClient
+
+            http_client = HTTPLatitudeClient(api_key)
+            latitude_data = http_client.get_document(
+                project_id, version_uuid, document_path
+            )
 
         # Extract template configuration
         template_config = extract_template_data(latitude_data)
@@ -87,7 +99,7 @@ def latitude_template_loader(template_path: str, use_sdk: bool = False) -> llm.T
 
         # Create LLM template
         return llm.Template(**template_config)
-        
+
     except ValueError:
         # Re-raise ValueError (like "SDK not available") as-is
         raise
@@ -128,14 +140,14 @@ def _get_api_key() -> str:
 def get_client_implementation(template_name: str = "lat") -> str:
     """
     Get the client implementation for a given template name
-    
+
     Args:
         template_name: Template name prefix (lat, lat-http, lat-sdk)
-        
+
     Returns:
         str: "sdk" for SDK implementation, "http" for HTTP client
     """
-    if template_name.startswith('lat-sdk'):
+    if template_name.startswith("lat-sdk"):
         return "sdk"
     else:
         return "http"
