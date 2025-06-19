@@ -190,6 +190,59 @@ uv run mypy llm_templates_latitude.py
 uv build
 ```
 
+### Creating a Release
+
+This project uses automated publishing to PyPI via GitHub Actions. To create a new release:
+
+1. **Update the version** in `pyproject.toml`:
+   ```toml
+   version = "0.1.2"  # Increment as needed
+   ```
+
+2. **Commit and push** the version change:
+   ```bash
+   git add pyproject.toml
+   git commit -m "Bump version to 0.1.2"
+   git push origin main
+   ```
+
+3. **Create and push a git tag**:
+   ```bash
+   git tag v0.1.2
+   git push origin v0.1.2
+   ```
+
+4. **Create a GitHub release**:
+   - Go to https://github.com/pcaro/llm-templates-latitude/releases
+   - Click "Create a new release"
+   - Use tag `v0.1.2` (must match the git tag)
+   - Add release notes describing changes
+   - Click "Publish release"
+
+   Or use GitHub CLI:
+   ```bash
+   gh release create v0.1.2 \
+     --title "v0.1.2" \
+     --notes "Description of changes in this version"
+   ```
+
+5. **Automatic publishing**: GitHub Actions will automatically:
+   - Run tests
+   - Build the package
+   - Publish to PyPI
+   - Make it available via `llm install llm-templates-latitude`
+
+#### Testing Releases
+
+To test publishing before a real release, use TestPyPI:
+
+```bash
+git tag test-v0.1.2
+git push origin test-v0.1.2
+```
+
+This will publish to https://test.pypi.org for verification.
+
 ## How It Works
 
 1. **Template Request**: When you use `-t lat:project/prompt`, the plugin calls Latitude's API
