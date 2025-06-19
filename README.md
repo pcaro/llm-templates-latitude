@@ -128,13 +128,12 @@ llm -t lat:99999/live -m gpt-4 "input"
 ```
 
 **💡 How to find the required values**:
+
 - **Project ID**: Numeric ID from Latitude project settings (e.g., `99999`)
 - **Version**: Either `live` for the latest version, or the specific UUID (e.g., `dc951f3b-a3d9-4ede-bff1-821e7b10c5e8`)
 - **Document Path**: Exact name of your prompt in Latitude (e.g., `pcaro-random-number`)
 
 **✅ Recommended**: Use `live` for the current version of your prompts, or specific UUIDs when you need exact version control.
-
-**❌ Not supported**: Global paths like `PS - Site Selection/pcaro-random-number` are not available in API v3.
 
 ### With Parameters
 
@@ -279,11 +278,13 @@ uv build
 This project uses automated publishing to PyPI via GitHub Actions. To create a new release:
 
 1. **Update the version** in `pyproject.toml`:
+
    ```toml
    version = "0.1.2"  # Increment as needed
    ```
 
 2. **Commit and push** the version change:
+
    ```bash
    git add pyproject.toml
    git commit -m "Bump version to 0.1.2"
@@ -291,6 +292,7 @@ This project uses automated publishing to PyPI via GitHub Actions. To create a n
    ```
 
 3. **Create and push a git tag**:
+
    ```bash
    git tag v0.1.2
    git push origin v0.1.2
@@ -304,6 +306,7 @@ This project uses automated publishing to PyPI via GitHub Actions. To create a n
    - Click "Publish release"
 
    Or use GitHub CLI:
+
    ```bash
    gh release create v0.1.2 \
      --title "v0.1.2" \
@@ -336,6 +339,7 @@ This will publish to https://test.pypi.org for verification.
 5. **Model Execution**: LLM processes your input with the chosen model using the Latitude prompt
 
 This gives you:
+
 - ✅ Centralized prompt management in Latitude
 - ✅ Version control and A/B testing of prompts
 - ✅ Team collaboration on prompts
