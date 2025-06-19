@@ -270,39 +270,48 @@ uv build
 
 This project uses automated publishing to PyPI via GitHub Actions. To create a new release:
 
-1. **Update the version** in `pyproject.toml`:
+1. **Update the version** using uv:
 
-   ```toml
-   version = "0.1.2"  # Increment as needed
+   ```bash
+   # Check what the new version would be (dry run)
+   uv version --dry-run --bump patch   # for bug fixes
+   uv version --dry-run --bump minor   # for new features
+   uv version --dry-run --bump major   # for breaking changes
+   
+   # Actually bump the version
+   uv version --bump minor  # or patch/major as needed
    ```
 
 2. **Commit and push** the version change:
 
    ```bash
    git add pyproject.toml
-   git commit -m "Bump version to 0.1.2"
+   git commit -m "Bump version to $(grep '^version = ' pyproject.toml | cut -d'"' -f2)"
    git push origin main
    ```
 
 3. **Create and push a git tag**:
 
    ```bash
-   git tag v0.1.2
-   git push origin v0.1.2
+   # Use the version from pyproject.toml
+   VERSION=$(grep '^version = ' pyproject.toml | cut -d'"' -f2)
+   git tag v$VERSION
+   git push origin v$VERSION
    ```
 
 4. **Create a GitHub release**:
    - Go to https://github.com/pcaro/llm-templates-latitude/releases
    - Click "Create a new release"
-   - Use tag `v0.1.2` (must match the git tag)
+   - Use tag `v$VERSION` (must match the git tag)
    - Add release notes describing changes
    - Click "Publish release"
 
    Or use GitHub CLI:
 
    ```bash
-   gh release create v0.1.2 \
-     --title "v0.1.2" \
+   VERSION=$(grep '^version = ' pyproject.toml | cut -d'"' -f2)
+   gh release create v$VERSION \
+     --title "v$VERSION" \
      --notes "Description of changes in this version"
    ```
 
@@ -317,8 +326,9 @@ This project uses automated publishing to PyPI via GitHub Actions. To create a n
 To test publishing before a real release, use TestPyPI:
 
 ```bash
-git tag test-v0.1.2
-git push origin test-v0.1.2
+VERSION=$(grep '^version = ' pyproject.toml | cut -d'"' -f2)
+git tag test-v$VERSION
+git push origin test-v$VERSION
 ```
 
 This will publish to https://test.pypi.org for verification.
