@@ -4,7 +4,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from llm_templates_latitude import _parse_template_path, latitude_template_loader
+from llm_templates_latitude import _parse_template_path, latitude_template_loader, _is_uuid_like
 
 
 def test_template_loader_registration():
@@ -21,19 +21,49 @@ def test_template_loader_registration():
 def test_parse_template_path():
     """Test parsing of template paths"""
     # Test with project_id/prompt_path format
-    project_id, prompt_path = _parse_template_path("my-project/email-template")
+    project_id, prompt_path, is_uuid = _parse_template_path("my-project/email-template")
     assert project_id == "my-project"
     assert prompt_path == "email-template"
+    assert is_uuid is False
 
     # Test with nested prompt path
-    project_id, prompt_path = _parse_template_path("proj123/marketing/emails/welcome")
+    project_id, prompt_path, is_uuid = _parse_template_path("proj123/marketing/emails/welcome")
     assert project_id == "proj123"
     assert prompt_path == "marketing/emails/welcome"
+    assert is_uuid is False
 
     # Test with just prompt path (no project)
-    project_id, prompt_path = _parse_template_path("simple-prompt")
+    project_id, prompt_path, is_uuid = _parse_template_path("simple-prompt")
     assert project_id is None
     assert prompt_path == "simple-prompt"
+    assert is_uuid is False
+
+    # Test with UUID
+    test_uuid = "550e8400-e29b-41d4-a716-446655440000"
+    project_id, uuid_str, is_uuid = _parse_template_path(test_uuid)
+    assert project_id is None
+    assert uuid_str == test_uuid
+    assert is_uuid is True
+
+    # Test with project_id/UUID format
+    project_id, uuid_str, is_uuid = _parse_template_path(f"my-project/{test_uuid}")
+    assert project_id == "my-project"
+    assert uuid_str == test_uuid
+    assert is_uuid is True
+
+
+def test_is_uuid_like():
+    """Test UUID detection"""
+    # Valid UUIDs
+    assert _is_uuid_like("550e8400-e29b-41d4-a716-446655440000") is True
+    assert _is_uuid_like("6ba7b810-9dad-11d1-80b4-00c04fd430c8") is True
+    assert _is_uuid_like("6BA7B810-9DAD-11D1-80B4-00C04FD430C8") is True  # uppercase
+
+    # Invalid UUIDs
+    assert _is_uuid_like("not-a-uuid") is False
+    assert _is_uuid_like("550e8400-e29b-41d4-a716") is False  # too short
+    assert _is_uuid_like("550e8400-e29b-41d4-a716-446655440000-extra") is False  # too long
+    assert _is_uuid_like("marketing/email-template") is False
 
 
 @patch("llm_templates_latitude.httpx.Client")

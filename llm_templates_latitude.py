@@ -24,8 +24,11 @@ def latitude_template_loader(template_path: str) -> llm.Template:
     Load a template from Latitude platform
 
     Args:
-        template_path: Format should be 'project_id/prompt_path'
-                      or just 'prompt_path' for default project
+        template_path: Can be one of:
+            - 'project_id/prompt_path' - Path within specific project
+            - 'prompt_path' - Path in default project
+            - 'uuid' - Prompt version UUID (recommended for reliability)
+            - 'project_id/uuid' - UUID within specific project
 
     Returns:
         llm.Template: Template object with prompt content from Latitude
@@ -37,10 +40,10 @@ def latitude_template_loader(template_path: str) -> llm.Template:
     api_key = _get_api_key()
 
     # Parse template path
-    project_id, prompt_path = _parse_template_path(template_path)
+    project_id, prompt_path_or_uuid, is_uuid = _parse_template_path(template_path)
 
     # Load template from Latitude
-    template_data = _fetch_latitude_template(api_key, project_id, prompt_path)
+    template_data = _fetch_latitude_template(api_key, project_id, prompt_path_or_uuid, is_uuid)
 
     # Create LLM template
     return _create_llm_template(template_path, template_data)
@@ -67,28 +70,54 @@ def _get_api_key() -> str:
     )
 
 
-def _parse_template_path(template_path: str) -> tuple[Optional[str], str]:
+def _parse_template_path(template_path: str) -> tuple[Optional[str], str, bool]:
     """
-    Parse template path into project_id and prompt_path
+    Parse template path into project_id, prompt_path/uuid, and is_uuid flag
 
     Args:
-        template_path: Either 'project_id/prompt_path' or just 'prompt_path'
+        template_path: Can be:
+            - 'project_id/prompt_path' 
+            - 'prompt_path'
+            - 'uuid' (prompt version UUID)
+            - 'project_id/uuid'
 
     Returns:
-        tuple: (project_id, prompt_path)
+        tuple: (project_id, prompt_path_or_uuid, is_uuid)
     """
     parts = template_path.split("/", 1)
 
     if len(parts) == 1:
-        # Just prompt path, use default project
-        return None, parts[0]
+        # Just prompt path or UUID
+        path_or_uuid = parts[0]
+        # Check if it looks like a UUID (basic check)
+        is_uuid = _is_uuid_like(path_or_uuid)
+        return None, path_or_uuid, is_uuid
     else:
-        # project_id/prompt_path format
-        return parts[0], parts[1]
+        # project_id/prompt_path or project_id/uuid format
+        project_id, path_or_uuid = parts[0], parts[1]
+        is_uuid = _is_uuid_like(path_or_uuid)
+        return project_id, path_or_uuid, is_uuid
+
+
+def _is_uuid_like(value: str) -> bool:
+    """
+    Check if a string looks like a UUID
+
+    Args:
+        value: String to check
+
+    Returns:
+        bool: True if it looks like a UUID
+    """
+    # Basic UUID pattern: 8-4-4-4-12 characters
+    import re
+
+    uuid_pattern = r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+    return bool(re.match(uuid_pattern, value.lower()))
 
 
 def _fetch_latitude_template(
-    api_key: str, project_id: Optional[str], prompt_path: str
+    api_key: str, project_id: Optional[str], prompt_path_or_uuid: str, is_uuid: bool = False
 ) -> Dict[str, Any]:
     """
     Fetch template data from Latitude API
@@ -96,7 +125,8 @@ def _fetch_latitude_template(
     Args:
         api_key: Latitude API key
         project_id: Project ID (optional, uses default if None)
-        prompt_path: Path to the prompt within the project
+        prompt_path_or_uuid: Path to the prompt or UUID of prompt version
+        is_uuid: Whether the identifier is a UUID or path
 
     Returns:
         dict: Template data from Latitude API
@@ -104,11 +134,16 @@ def _fetch_latitude_template(
     Raises:
         ValueError: If the API request fails
     """
-    # Build API URL
-    if project_id:
-        url = f"https://gateway.latitude.so/api/v1/projects/{project_id}/prompts/{prompt_path}"
+    # Build API URL based on whether we're using UUID or path
+    if is_uuid:
+        # Use UUID endpoint (prompt version)
+        url = f"https://gateway.latitude.so/api/v1/prompt-versions/{prompt_path_or_uuid}"
+    elif project_id:
+        # Use project + path endpoint
+        url = f"https://gateway.latitude.so/api/v1/projects/{project_id}/prompts/{prompt_path_or_uuid}"
     else:
-        url = f"https://gateway.latitude.so/api/v1/prompts/{prompt_path}"
+        # Use global path endpoint
+        url = f"https://gateway.latitude.so/api/v1/prompts/{prompt_path_or_uuid}"
 
     headers = {
         "Authorization": f"Bearer {api_key}",
@@ -127,7 +162,8 @@ def _fetch_latitude_template(
         if e.response.status_code == 401:
             raise ValueError("Invalid Latitude API key")
         elif e.response.status_code == 404:
-            raise ValueError(f"Prompt not found: {prompt_path}")
+            identifier_type = "UUID" if is_uuid else "path"
+            raise ValueError(f"Prompt not found ({identifier_type}): {prompt_path_or_uuid}")
         else:
             raise ValueError(f"Latitude API error: {e.response.status_code}")
     except httpx.RequestError as e:

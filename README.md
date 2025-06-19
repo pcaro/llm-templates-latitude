@@ -70,7 +70,15 @@ llm -t lat:my-project/content/blog/technical-writer
 
 # Just prompt path (uses default project)
 llm -t lat:welcome-email
+
+# UUID format (prompt version UUID - recommended for reliability)
+llm -t lat:550e8400-e29b-41d4-a716-446655440000
+
+# Project with UUID
+llm -t lat:my-project/550e8400-e29b-41d4-a716-446655440000
 ```
+
+**💡 Tip**: Using UUIDs is more reliable than paths since they don't change when you rename prompts or move them between projects. You can find the UUID in the Latitude web interface.
 
 ### With Parameters
 
