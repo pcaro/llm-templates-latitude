@@ -87,7 +87,7 @@ def test_latitude_template_loader_404(mock_get_api_key, mock_httpx_client):
 
     # Create a proper HTTPStatusError
     request = Request(
-        "GET", "https://api.latitude.so/api/v1/prompts/nonexistent-prompt"
+        "GET", "https://gateway.latitude.so/api/v1/prompts/nonexistent-prompt"
     )
     response = Response(404, request=request)
     http_error = HTTPStatusError("404 Not Found", request=request, response=response)
@@ -114,12 +114,14 @@ def test_get_api_key_from_env(mock_getenv):
     mock_getenv.assert_called_with("LATITUDE_API_KEY")
 
 
+@patch("llm_templates_latitude.llm.get_key")
 @patch("llm_templates_latitude.os.getenv")
-def test_get_api_key_missing(mock_getenv):
+def test_get_api_key_missing(mock_getenv, mock_get_key):
     """Test error when API key is missing"""
     from llm_templates_latitude import _get_api_key
 
     mock_getenv.return_value = None
+    mock_get_key.side_effect = Exception("Key not found")
 
     with pytest.raises(ValueError, match="Latitude API key not found"):
         _get_api_key()

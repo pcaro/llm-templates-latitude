@@ -106,9 +106,9 @@ def _fetch_latitude_template(
     """
     # Build API URL
     if project_id:
-        url = f"https://api.latitude.so/api/v1/projects/{project_id}/prompts/{prompt_path}"
+        url = f"https://gateway.latitude.so/api/v1/projects/{project_id}/prompts/{prompt_path}"
     else:
-        url = f"https://api.latitude.so/api/v1/prompts/{prompt_path}"
+        url = f"https://gateway.latitude.so/api/v1/prompts/{prompt_path}"
 
     headers = {
         "Authorization": f"Bearer {api_key}",
