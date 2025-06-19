@@ -86,6 +86,7 @@ The future implementation will use:
 - Built-in authentication handling
 - SDK-provided error types
 - Native data structures
+- Automatic project/version context management
 
 ### Compatibility Notes
 

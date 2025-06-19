@@ -142,8 +142,10 @@ def parse_template_path(template_path: str) -> Tuple[Optional[str], Optional[str
     Args:
         template_path: Must be one of:
             - 'project_id/version_uuid/document_path' - Full specification (recommended)
+            - 'project_id/live/document_path' - Use live version
             - 'version_uuid/document_path' - Will try without project ID
             - 'project_id/version_uuid' - List all documents in version
+            - 'project_id/live' - List all documents in live version
     
     Returns:
         tuple: (project_id, version_uuid, document_path)
@@ -162,27 +164,27 @@ def parse_template_path(template_path: str) -> Tuple[Optional[str], Optional[str
                 "Invalid format. Use: project_id/version_uuid/document_path"
             )
     elif len(parts) == 2:
-        # Could be version_uuid/document_path or project_id/version_uuid
+        # Could be version_uuid/document_path or project_id/version_uuid or project_id/live
         if is_uuid_like(parts[0]):
             # version_uuid/document_path
             return None, parts[0], parts[1]
-        elif is_uuid_like(parts[1]):
-            # project_id/version_uuid (list documents)
+        elif is_uuid_like(parts[1]) or parts[1] == "live":
+            # project_id/version_uuid (list documents) or project_id/live
             return parts[0], parts[1], ""
         else:
             raise ValueError(
-                "Invalid format. Second part must be a version UUID. "
-                "Use: project_id/version_uuid/document_path"
+                "Invalid format. Second part must be a version UUID or 'live'. "
+                "Use: project_id/version_uuid/document_path or project_id/live/document_path"
             )
     elif len(parts) >= 3:
-        # project_id/version_uuid/document_path
+        # project_id/version_uuid/document_path or project_id/live/document_path
         project_id, version_uuid = parts[0], parts[1]
         document_path = "/".join(parts[2:])
         
-        if not is_uuid_like(version_uuid):
+        if not (is_uuid_like(version_uuid) or version_uuid == "live"):
             raise ValueError(
                 f"Invalid version UUID: {version_uuid}. "
-                "Use: project_id/version_uuid/document_path"
+                "Use: project_id/version_uuid/document_path or project_id/live/document_path"
             )
         
         return project_id, version_uuid, document_path
@@ -218,22 +220,49 @@ def extract_template_data(latitude_data: Dict[str, Any]) -> Dict[str, Any]:
     template_config = {}
     
     # Extract prompt content
+    prompt_content = None
     if "content" in latitude_data:
-        template_config["prompt"] = latitude_data["content"]
+        prompt_content = latitude_data["content"]
     elif "prompt" in latitude_data:
-        template_config["prompt"] = latitude_data["prompt"]
+        prompt_content = latitude_data["prompt"]
+    
+    if prompt_content is not None:
+        # If prompt content has YAML frontmatter, extract just the content part
+        # Latitude prompts often have frontmatter like:
+        # ---
+        # provider: product_litellm
+        # model: carto::gpt-4.1-mini
+        # ---
+        # Actual prompt content here
+        
+        if prompt_content.startswith('---\n'):
+            # Find the end of frontmatter
+            end_marker = '\n---\n'
+            end_pos = prompt_content.find(end_marker)
+            if end_pos != -1:
+                # Extract content after frontmatter
+                actual_prompt = prompt_content[end_pos + len(end_marker):].strip()
+                if actual_prompt:
+                    prompt_content = actual_prompt
+        
+        # Convert Latitude's {{variable}} syntax to LLM's $variable syntax
+        import re
+        converted_prompt = re.sub(r'\{\{(\w+)\}\}', r'$\1', prompt_content)
+        template_config["prompt"] = converted_prompt
     
     # Extract system prompt if available
     if "system" in latitude_data and latitude_data["system"]:
-        template_config["system"] = latitude_data["system"]
+        # Convert Latitude's {{variable}} syntax to LLM's $variable syntax
+        system_prompt = re.sub(r'\{\{(\w+)\}\}', r'$\1', latitude_data["system"])
+        template_config["system"] = system_prompt
     elif "system_prompt" in latitude_data and latitude_data["system_prompt"]:
-        template_config["system"] = latitude_data["system_prompt"]
+        # Convert Latitude's {{variable}} syntax to LLM's $variable syntax
+        system_prompt = re.sub(r'\{\{(\w+)\}\}', r'$\1', latitude_data["system_prompt"])
+        template_config["system"] = system_prompt
     
-    # Extract suggested model if available
-    if "model" in latitude_data and latitude_data["model"]:
-        template_config["model"] = latitude_data["model"]
-    elif "recommended_model" in latitude_data and latitude_data["recommended_model"]:
-        template_config["model"] = latitude_data["recommended_model"]
+    # Note: We deliberately don't include the 'model' field from Latitude
+    # Users specify the model via -m flag, and including it here can cause
+    # "Extra inputs are not permitted" errors with some LLM versions
     
     # Extract default parameters if available
     if "parameters" in latitude_data and isinstance(latitude_data["parameters"], dict):
@@ -241,11 +270,24 @@ def extract_template_data(latitude_data: Dict[str, Any]) -> Dict[str, Any]:
     elif "defaults" in latitude_data and isinstance(latitude_data["defaults"], dict):
         template_config["defaults"] = latitude_data["defaults"]
     
-    # Extract model options if available
+    # Extract model options if available (but filter out problematic fields)
+    options_data = None
     if "model_config" in latitude_data and isinstance(latitude_data["model_config"], dict):
-        template_config["options"] = latitude_data["model_config"]
+        options_data = latitude_data["model_config"]
     elif "options" in latitude_data and isinstance(latitude_data["options"], dict):
-        template_config["options"] = latitude_data["options"]
+        options_data = latitude_data["options"]
+    
+    if options_data:
+        # Filter out fields that cause "Extra inputs are not permitted" errors
+        filtered_options = {}
+        for key, value in options_data.items():
+            # Exclude problematic fields
+            if key not in ['model', 'provider', 'modelName', 'recommended_model']:
+                filtered_options[key] = value
+        
+        # Only include options if there are any valid fields left
+        if filtered_options:
+            template_config["options"] = filtered_options
     
     # Extract schema if available (for structured output)
     if "schema" in latitude_data and latitude_data["schema"]:

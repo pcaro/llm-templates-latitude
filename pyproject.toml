@@ -24,6 +24,7 @@ dependencies = [
     "httpx>=0.24.0",
     "pydantic>=2.0",
     "python-dotenv>=1.0.0",
+    "latitude-sdk>=1.0.0",
 ]
 requires-python = ">=3.9"
 
@@ -46,6 +47,7 @@ dev-dependencies = [
     "mypy>=1.0",
     "twine>=6.1.0",
     "build>=1.0.0",
+    "llm-anthropic>=0.17",
 ]
 
 [tool.black]

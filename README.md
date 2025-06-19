@@ -42,6 +42,53 @@ llm keys set latitude
 # Enter: your-api-key
 ```
 
+### SDK vs HTTP Client
+
+The plugin supports two implementations that you can choose using different template prefixes:
+
+- **`lat:`** or **`lat-http:`** - HTTP Client (default): Direct HTTP calls to Latitude API
+- **`lat-sdk:`** - SDK Client: Uses the official Latitude Python SDK
+
+### Using Different Implementations
+
+Choose your implementation using the template prefix:
+
+```bash
+# HTTP Client (default) - both of these are equivalent
+llm -t lat:19228/live/welcome-email -m gpt-4 "New user signed up"
+llm -t lat-http:19228/live/welcome-email -m gpt-4 "New user signed up"
+
+# SDK Client (requires latitude-sdk package)
+llm -t lat-sdk:19228/live/welcome-email -m gpt-4 "New user signed up"
+```
+
+To use the SDK implementation, you need to install the SDK package:
+
+```bash
+# Install the latitude-sdk package
+pip install latitude-sdk
+
+# Then use the lat-sdk: prefix
+llm -t lat-sdk:19228/live/welcome-email -m gpt-4 "input"
+```
+
+To check which implementation a prefix would use:
+
+```python
+import llm_templates_latitude
+
+print(llm_templates_latitude.get_client_implementation("lat"))        # "http"
+print(llm_templates_latitude.get_client_implementation("lat-http"))   # "http"
+print(llm_templates_latitude.get_client_implementation("lat-sdk"))    # "sdk"
+```
+
+**Note**: Both implementations extract the same template fields and exclude potentially problematic fields like `model` and `provider` to avoid validation errors. The model should be specified using the `-m` flag instead of relying on Latitude's model recommendation.
+
+### **SDK vs HTTP Behavior**
+
+- **HTTP Client** (`lat:` or `lat-http:`): Directly queries the Latitude API v3 endpoint for the specific project/version/document combination
+- **SDK Client** (`lat-sdk:`): Initializes with the project ID and version UUID context, then fetches the document. The SDK automatically handles version switching when you request different versions of prompts.
+
 ## Usage
 
 ### Basic Usage
@@ -50,13 +97,13 @@ Load a Latitude prompt as a template and use it with any LLM model:
 
 ```bash
 # Use a Latitude prompt with GPT-4
-llm -t lat:my-project/welcome-email -m gpt-4 "New user John just signed up"
+llm -t lat:19228/live/welcome-email -m gpt-4 "New user John just signed up"
 
 # Use with Claude
-llm -t lat:my-project/blog-writer -m claude-3.5-sonnet -p topic "AI development" "Write an article"
+llm -t lat:19228/live/blog-writer -m claude-3.5-sonnet -p topic "AI development" "Write an article"
 
 # Use with local models
-llm -t lat:code-reviewer -m llama2 < my-code.py
+llm -t lat:19228/live/code-reviewer -m llama2 < my-code.py
 ```
 
 ### Template Path Formats
@@ -64,30 +111,47 @@ llm -t lat:code-reviewer -m llama2 < my-code.py
 **Important**: Latitude API v3 requires specific format with project ID, version UUID, and document path. Traditional path-based access is not supported.
 
 ```bash
-# Full format (recommended): project-id/version-uuid/document-path
+# Full format with specific version: project-id/version-uuid/document-path
 llm -t lat:19228/dc951f3b-a3d9-4ede-bff1-821e7b10c5e8/pcaro-random-number -m gpt-4 "Sumale 3"
+
+# Use live version (recommended for latest): project-id/live/document-path
+llm -t lat:19228/live/pcaro-random-number -m gpt-4 "Sumale 3"
 
 # Version and document (tries without project ID):
 llm -t lat:dc951f3b-a3d9-4ede-bff1-821e7b10c5e8/pcaro-random-number -m gpt-4 "input"
 
-# List documents in version:
+# List documents in specific version:
 llm -t lat:19228/dc951f3b-a3d9-4ede-bff1-821e7b10c5e8 -m gpt-4 "input"
+
+# List documents in live version:
+llm -t lat:19228/live -m gpt-4 "input"
 ```
 
 **💡 How to find the required values**:
 - **Project ID**: Numeric ID from Latitude project settings (e.g., `19228`)
-- **Version UUID**: UUID of the prompt version in Latitude (e.g., `dc951f3b-a3d9-4ede-bff1-821e7b10c5e8`)
+- **Version**: Either `live` for the latest version, or the specific UUID (e.g., `dc951f3b-a3d9-4ede-bff1-821e7b10c5e8`)
 - **Document Path**: Exact name of your prompt in Latitude (e.g., `pcaro-random-number`)
+
+**✅ Recommended**: Use `live` for the current version of your prompts, or specific UUIDs when you need exact version control.
 
 **❌ Not supported**: Global paths like `PS - Site Selection/pcaro-random-number` are not available in API v3.
 
 ### With Parameters
 
-If your Latitude prompt has parameters defined, you can override them:
+If your Latitude prompt has parameters defined (using `{{variable}}` syntax), you can provide values using the `-p` flag:
 
 ```bash
-llm -t lat:email-template -p recipient_name "Alice" -p tone "formal" "Meeting cancelled"
+# Latitude prompt: "Hello {{name}}, your score is {{score}}"
+llm -t lat:19228/live/user-greeting -p name "Alice" -p score 95 -m gpt-4
+
+# Use with specific version
+llm -t lat:19228/dc951f3b-a3d9-4ede-bff1-821e7b10c5e8/user-greeting -p name "Alice" -p score 95 -m gpt-4
+
+# Use with any model
+llm -t lat:19228/live/email-template -p recipient_name "Bob" -p tone "formal" -m claude-3 "Meeting cancelled"
 ```
+
+**Variable Syntax Conversion**: The plugin automatically converts Latitude's `{{variable}}` syntax to LLM's `$variable` syntax, so your existing Latitude prompts work seamlessly with LLM's parameter system.
 
 ### Save Templates Locally
 
@@ -95,7 +159,7 @@ You can save Latitude templates locally for faster access:
 
 ```bash
 # Download and save locally
-llm -t lat:my-project/summarizer --save my-summarizer
+llm -t lat:19228/live/summarizer --save my-summarizer
 
 # Use the saved template
 llm -t my-summarizer -m gpt-4 "Content to summarize"
@@ -106,7 +170,11 @@ llm -t my-summarizer -m gpt-4 "Content to summarize"
 Templates work with streaming just like regular LLM usage:
 
 ```bash
-llm -t lat:story-writer -m gpt-4 "Once upon a time..." --stream
+# HTTP Client
+llm -t lat:19228/live/story-writer -m gpt-4 "Once upon a time..." --stream
+
+# SDK Client
+llm -t lat-sdk:19228/live/story-writer -m gpt-4 "Once upon a time..." --stream
 ```
 
 ## Template Features
@@ -114,42 +182,49 @@ llm -t lat:story-writer -m gpt-4 "Once upon a time..." --stream
 The plugin automatically extracts from your Latitude prompts:
 
 - **Prompt content**: Main prompt text with variables
-- **System prompts**: If defined in Latitude
+- **Variable conversion**: Converts `{{variable}}` to `$variable` for LLM compatibility
+- **System prompts**: If defined in Latitude (with variable conversion)
 - **Default parameters**: Parameter defaults from Latitude
-- **Model recommendations**: Suggested model from Latitude
-- **Model configuration**: Temperature, max tokens, etc.
+- **Model configuration**: Temperature, max tokens, etc. (excluding model/provider fields)
 - **JSON schemas**: For structured output prompts
+- **YAML frontmatter**: Automatically parsed and removed from prompt content
 
 ## Examples
 
 ### Content Generation
 
 ```bash
-# Blog post writer
-llm -t lat:content/blog-writer -m gpt-4 -p topic "Python packaging" -p audience "developers"
+# Blog post writer (using live version) - HTTP Client
+llm -t lat:12345/live/blog-writer -m gpt-4 -p topic "Python packaging" -p audience "developers"
 
-# Email templates
-llm -t lat:emails/customer-support -m claude-3 "Customer wants refund"
+# Blog post writer - SDK Client
+llm -t lat-sdk:12345/live/blog-writer -m gpt-4 -p topic "Python packaging" -p audience "developers"
+
+# Email templates (HTTP default)
+llm -t lat:12345/live/customer-support -m claude-3 "Customer wants refund"
 ```
 
 ### Code Tasks
 
 ```bash
-# Code review
-llm -t lat:dev/code-reviewer -m gpt-4 < pull-request.diff
+# Code review - HTTP Client
+llm -t lat:12345/live/code-reviewer -m gpt-4 < pull-request.diff
 
-# Documentation generator
-llm -t lat:dev/doc-generator -m claude-3 -p language "Python" < my-function.py
+# Code review - explicit HTTP
+llm -t lat-http:12345/live/code-reviewer -m gpt-4 < pull-request.diff
+
+# Documentation generator - SDK Client
+llm -t lat-sdk:12345/live/doc-generator -m claude-3 -p language "Python" < my-function.py
 ```
 
 ### Data Analysis
 
 ```bash
-# Data summarizer
-cat data.csv | llm -t lat:analysis/data-summary -m gpt-4
+# Data summarizer - HTTP Client
+cat data.csv | llm -t lat:12345/live/data-summary -m gpt-4
 
-# Report generator
-llm -t lat:reports/quarterly -m claude-3 -p quarter "Q4 2023" -p metrics "revenue,users"
+# Report generator - SDK Client
+llm -t lat-sdk:12345/live/quarterly-report -m claude-3 -p quarter "Q4 2023" -p metrics "revenue,users"
 ```
 
 ## Development
@@ -254,10 +329,11 @@ This will publish to https://test.pypi.org for verification.
 
 ## How It Works
 
-1. **Template Request**: When you use `-t lat:project/prompt`, the plugin calls Latitude's API
-2. **Template Download**: Retrieves the prompt content, system prompt, and configuration
-3. **LLM Integration**: Creates an LLM template with the downloaded content
-4. **Model Execution**: LLM processes your input with the chosen model using the Latitude prompt
+1. **Template Request**: When you use `-t lat:project/prompt`, `-t lat-http:project/prompt`, or `-t lat-sdk:project/prompt`, the plugin calls Latitude's API
+2. **Client Selection**: The plugin automatically selects the HTTP or SDK client based on the prefix you used
+3. **Template Download**: Retrieves the prompt content, system prompt, and configuration from Latitude
+4. **LLM Integration**: Creates an LLM template with the downloaded content and converted variables
+5. **Model Execution**: LLM processes your input with the chosen model using the Latitude prompt
 
 This gives you:
 - ✅ Centralized prompt management in Latitude

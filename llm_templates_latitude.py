@@ -8,26 +8,19 @@ from typing import Optional
 import llm
 from dotenv import load_dotenv
 
-from lat import (
-    LatitudeAPIError,
-    LatitudeAuthenticationError, 
-    LatitudeClient,
-    LatitudeNotFoundError,
-    extract_template_data,
-    parse_template_path,
-)
-
 # Load environment variables from .env file
 load_dotenv()
 
 
 @llm.hookimpl
 def register_template_loaders(register):
-    """Register Latitude template loader with LLM"""
-    register("lat", latitude_template_loader)
+    """Register Latitude template loaders with LLM"""
+    register("lat", lambda path: latitude_template_loader(path, use_sdk=False))  # Default (HTTP)
+    register("lat-http", lambda path: latitude_template_loader(path, use_sdk=False))  # Explicit HTTP
+    register("lat-sdk", lambda path: latitude_template_loader(path, use_sdk=True))  # SDK
 
 
-def latitude_template_loader(template_path: str) -> llm.Template:
+def latitude_template_loader(template_path: str, use_sdk: bool = False) -> llm.Template:
     """
     Load a template from Latitude platform
 
@@ -36,6 +29,7 @@ def latitude_template_loader(template_path: str) -> llm.Template:
             - 'project_id/version_uuid/document_path' - Full path with project, version, and document
             - 'version_uuid/document_path' - Version and document (project determined automatically)
             - 'project_id/version_uuid' - Project and version (lists all documents)
+        use_sdk: Whether to use the SDK implementation or HTTP client
 
     Returns:
         llm.Template: Template object with prompt content from Latitude
@@ -47,8 +41,32 @@ def latitude_template_loader(template_path: str) -> llm.Template:
         # Get API key from environment or LLM keys
         api_key = _get_api_key()
         
-        # Create Latitude client
-        client = LatitudeClient(api_key)
+        # Import the appropriate client
+        if use_sdk:
+            try:
+                from lat_sdk import (
+                    LatitudeAPIError,
+                    LatitudeAuthenticationError, 
+                    LatitudeClient,
+                    LatitudeNotFoundError,
+                    extract_template_data,
+                    parse_template_path,
+                )
+                # For SDK, we can pass project_id during initialization if available
+                project_id_hint, _, _ = parse_template_path(template_path)
+                client = LatitudeClient(api_key, project_id_hint)
+            except ImportError:
+                raise ValueError("SDK not available. Install with: pip install latitude-sdk")
+        else:
+            from lat import (
+                LatitudeAPIError,
+                LatitudeAuthenticationError, 
+                LatitudeClient,
+                LatitudeNotFoundError,
+                extract_template_data,
+                parse_template_path,
+            )
+            client = LatitudeClient(api_key)
 
         # Parse template path
         project_id, version_uuid, document_path = parse_template_path(template_path)
@@ -70,14 +88,20 @@ def latitude_template_loader(template_path: str) -> llm.Template:
         # Create LLM template
         return llm.Template(**template_config)
         
-    except LatitudeAuthenticationError as e:
-        raise ValueError(f"Authentication error: {e}")
-    except LatitudeNotFoundError as e:
-        raise ValueError(f"Not found: {e}")
-    except LatitudeAPIError as e:
-        raise ValueError(f"Latitude API error: {e}")
+    except ValueError:
+        # Re-raise ValueError (like "SDK not available") as-is
+        raise
     except Exception as e:
-        raise ValueError(f"Error loading template: {e}")
+        # Handle Latitude-specific errors if the exception classes are defined
+        error_name = type(e).__name__
+        if "Authentication" in error_name:
+            raise ValueError(f"Authentication error: {e}")
+        elif "NotFound" in error_name:
+            raise ValueError(f"Not found: {e}")
+        elif "LatitudeAPI" in error_name:
+            raise ValueError(f"Latitude API error: {e}")
+        else:
+            raise ValueError(f"Error loading template: {e}")
 
 
 def _get_api_key() -> str:
@@ -99,3 +123,19 @@ def _get_api_key() -> str:
         "Latitude API key not found. Set LATITUDE_API_KEY environment variable "
         "or configure it with: llm keys set latitude"
     )
+
+
+def get_client_implementation(template_name: str = "lat") -> str:
+    """
+    Get the client implementation for a given template name
+    
+    Args:
+        template_name: Template name prefix (lat, lat-http, lat-sdk)
+        
+    Returns:
+        str: "sdk" for SDK implementation, "http" for HTTP client
+    """
+    if template_name.startswith('lat-sdk'):
+        return "sdk"
+    else:
+        return "http"
